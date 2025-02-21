@@ -58,6 +58,14 @@
             return ++idCounter;
         }
 
+        // Convertir segundos a hh:mm:ss
+        function segundosAHHMMSS(segundos) {
+            const horas = Math.floor(segundos / 3600);
+            const minutos = Math.floor((segundos % 3600) / 60);
+            const secs = segundos % 60;
+            return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
         // Crear el elemento HTML para una tarea
         function crearTareaElement(tarea) {
             const div = document.createElement('div');
@@ -65,7 +73,7 @@
             div.dataset.id = tarea.id;
             div.innerHTML = `
                 <h3>${tarea.nombre}</h3>
-                <p>Tiempo: <span id="tiempo-${tarea.id}">${tarea.tiempo}</span> segundos</p>
+                <p>Tiempo: <span id="tiempo-${tarea.id}">${segundosAHHMMSS(tarea.tiempo)}</span></p>
             `;
             if (tarea.estado === 'para-hacer') {
                 div.innerHTML += `<button onclick="moverTarea(${tarea.id}, 'haciendo')">Iniciar</button>`;
@@ -115,7 +123,7 @@
                 tareaElement.classList.add('seleccionada');
                 intervalo = setInterval(() => {
                     tarea.tiempo += 1;
-                    document.getElementById(`tiempo-${id}`).textContent = tarea.tiempo;
+                    document.getElementById(`tiempo-${id}`).textContent = segundosAHHMMSS(tarea.tiempo);
                     guardarTareas();
                 }, 1000);
             }
