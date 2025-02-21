@@ -73,16 +73,17 @@
             div.dataset.id = tarea.id;
             div.innerHTML = `
                 <h3>${tarea.nombre}</h3>
-                <p>Tiempo: <span id="tiempo-${tarea.id}">${segundosAHHMMSS(tarea.tiempo)}</span></p>
-            `;
+                <p>Tiempo: <span id="tiempo-${tarea.id}">${segundosAHHMMSS(tarea.tiempo)}</span></p>`;
             if (tarea.estado === 'para-hacer') {
                 div.innerHTML += `<button onclick="moverTarea(${tarea.id}, 'haciendo')">Iniciar</button>`;
+                div.innerHTML += `<button onclick="editarTarea(${tarea.id})">Editar</button>`;
             } else if (tarea.estado === 'haciendo') {
                 div.innerHTML += `<button onclick="moverTarea(${tarea.id}, 'finalizadas')">Finalizar</button>`;
+                div.innerHTML += `<button onclick="editarTarea(${tarea.id})">Editar</button>`;
                 div.addEventListener('click', () => seleccionarTarea(tarea.id));
             }
             return div;
-        }
+}
 
         // Renderizar todas las tareas en sus respectivas columnas
         function renderizarTareas() {
@@ -172,6 +173,18 @@
                 tareas = JSON.parse(tareasGuardadas);
                 idCounter = parseInt(localStorage.getItem('idCounter')) || 0;
                 renderizarTareas();
+            }
+        }
+
+        function editarTarea(id) {
+            const tarea = tareas.find(t => t.id === id);
+            if (tarea && (tarea.estado === 'para-hacer' || tarea.estado === 'haciendo')) {
+                const nuevoNombre = prompt('Ingrese el nuevo nombre de la tarea:', tarea.nombre);
+                if (nuevoNombre) {
+                    tarea.nombre = nuevoNombre;
+                    renderizarTareas();
+                    guardarTareas();
+                }
             }
         }
 
