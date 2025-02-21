@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Tareas con Cronómetro</title>
+    <style>
+        #app {
+            display: flex;
+            justify-content: space-around;
+        }
+        .columna {
+            width: 30%;
+            border: 1px solid #ccc;
+            padding: 10px;
+            min-height: 300px;
+        }
+        .tarea {
+            border: 1px solid #ddd;
+            margin: 5px 0;
+            padding: 10px;
+            cursor: pointer;
+            background-color: #f9f9f9;
+        }
+        .tarea.seleccionada {
+            background-color: #e0f7fa;
+        }
+        button {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="para-hacer" class="columna">
+            <h2>Para hacer</h2>
+            <div class="tareas-contenedor"></div>
+        </div>
+        <div id="haciendo" class="columna">
+            <h2>Haciendo</h2>
+            <div class="tareas-contenedor"></div>
+        </div>
+        <div id="finalizadas" class="columna">
+            <h2>Finalizadas</h2>
+            <div class="tareas-contenedor"></div>
+        </div>
+    </div>
+    <button onclick="agregarTarea()">Agregar Tarea</button>
+
+    <script>
+        let tareas = [];
+        let tareaSeleccionada = null;
+        let intervalo = null;
+        let idCounter = 0;
+
+        // Generar un ID único para cada tarea
+        function generarId() {
+            return ++idCounter;
+        }
+
+        // Crear el elemento HTML para una tarea
+        function crearTareaElement(tarea) {
+            const div = document.createElement('div');
+            div.classList.add('tarea');
+            div.dataset.id = tarea.id;
+            div.innerHTML = `
+                <h3>${tarea.nombre}</h3>
+                <p>Tiempo: <span id="tiempo-${tarea.id}">${tarea.tiempo}</span> segundos</p>
+            `;
+            if (tarea.estado === 'para-hacer') {
+                div.innerHTML += `<button onclick="moverTarea(${tarea.id}, 'haciendo')">Iniciar</button>`;
+            } else if (tarea.estado === 'haciendo') {
+                div.innerHTML += `<button onclick="moverTarea(${tarea.id}, 'finalizadas')">Finalizar</button>`;
+                div.addEventListener('click', () => seleccionarTarea(tarea.id));
+            }
+            return div;
+        }
+
+        // Renderizar todas las tareas en sus respectivas columnas
+        function renderizarTareas() {
+            const paraHacerDiv = document.querySelector('#para-hacer .tareas-contenedor');
+            const haciendoDiv = document.querySelector('#haciendo .tareas-contenedor');
+            const finalizadasDiv = document.querySelector('#finalizadas .tareas-contenedor');
+
+            paraHacerDiv.innerHTML = '';
+            haciendoDiv.innerHTML = '';
+            finalizadasDiv.innerHTML = '';
+
+            tareas.forEach(tarea => {
+                const tareaElement = crearTareaElement(tarea);
+                if (tarea.estado === 'para-hacer') {
+                    paraHacerDiv.appendChild(tareaElement);
+                } else if (tarea.estado === 'haciendo') {
+                    haciendoDiv.appendChild(tareaElement);
+                } else if (tarea.estado === 'finalizadas') {
+                    finalizadasDiv.appendChild(tareaElement);
+                }
+                if (tarea.id === tareaSeleccionada) {
+                    tareaElement.classList.add('seleccionada');
+                }
+            });
+        }
+
+        // Seleccionar una tarea y activar su cronómetro
+        function seleccionarTarea(id) {
+            if (tareaSeleccionada) {
+                clearInterval(intervalo);
+                const prevTareaElement = document.querySelector(`.tarea[data-id="${tareaSeleccionada}"]`);
+                if (prevTareaElement) prevTareaElement.classList.remove('seleccionada');
+            }
+            const tarea = tareas.find(t => t.id === id);
+            if (tarea && tarea.estado === 'haciendo') {
+                tareaSeleccionada = id;
+                const tareaElement = document.querySelector(`.tarea[data-id="${id}"]`);
+                tareaElement.classList.add('seleccionada');
+                intervalo = setInterval(() => {
+                    tarea.tiempo += 1;
+                    document.getElementById(`tiempo-${id}`).textContent = tarea.tiempo;
+                    guardarTareas();
+                }, 1000);
+            }
+        }
+
+        // Mover una tarea a otra columna
+        function moverTarea(id, nuevoEstado) {
+            const tarea = tareas.find(t => t.id === id);
+            if (tarea) {
+                tarea.estado = nuevoEstado;
+                if (nuevoEstado === 'finalizadas' && tareaSeleccionada === id) {
+                    clearInterval(intervalo);
+                    tareaSeleccionada = null;
+                }
+                renderizarTareas();
+                guardarTareas();
+            }
+        }
+
+        // Agregar una nueva tarea
+        function agregarTarea() {
+            const nombre = prompt('Ingrese el nombre de la tarea:');
+            if (nombre) {
+                const nuevaTarea = {
+                    id: generarId(),
+                    nombre: nombre,
+                    estado: 'para-hacer',
+                    tiempo: 0
+                };
+                tareas.push(nuevaTarea);
+                renderizarTareas();
+                guardarTareas();
+            }
+        }
+
+        // Guardar las tareas en localStorage
+        function guardarTareas() {
+            localStorage.setItem('tareas', JSON.stringify(tareas));
+            localStorage.setItem('idCounter', idCounter);
+        }
+
+        // Cargar las tareas desde localStorage
+        function cargarTareas() {
+            const tareasGuardadas = localStorage.getItem('tareas');
+            if (tareasGuardadas) {
+                tareas = JSON.parse(tareasGuardadas);
+                idCounter = parseInt(localStorage.getItem('idCounter')) || 0;
+                renderizarTareas();
+            }
+        }
+
+        // Inicializar la aplicación
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarTareas();
+        });
+    </script>
+</body>
+</html>
