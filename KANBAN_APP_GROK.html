@@ -188,6 +188,47 @@
             }
         }
 
+        // Función para crear el elemento HTML de una tarea
+        function crearTareaElement(tarea) {
+            const div = document.createElement('div');
+            div.classList.add('tarea');
+            div.dataset.id = tarea.id;
+            div.innerHTML = `
+                <h3>${tarea.nombre}</h3>
+                <p>Tiempo: <span id="tiempo-${tarea.id}">${segundosAHHMMSS(tarea.tiempo)}</span></p>
+            `;
+
+            // Botones según el estado de la tarea
+            if (tarea.estado === 'para-hacer') {
+                div.innerHTML += `<button onclick="moverTarea(${tarea.id}, 'haciendo')">Iniciar</button>`;
+                div.innerHTML += `<button onclick="editarTarea(${tarea.id})">Editar</button>`;
+            } else if (tarea.estado === 'haciendo') {
+                div.innerHTML += `<button onclick="moverTarea(${tarea.id}, 'finalizadas')">Finalizar</button>`;
+                div.innerHTML += `<button onclick="editarTarea(${tarea.id})">Editar</button>`;
+                div.innerHTML += `<button onclick="regresarTarea(${tarea.id}, 'para-hacer')">Regresar a Para hacer</button>`;
+                div.addEventListener('click', () => seleccionarTarea(tarea.id));
+            } else if (tarea.estado === 'finalizadas') {
+                div.innerHTML += `<button onclick="regresarTarea(${tarea.id}, 'haciendo')">Regresar a Haciendo</button>`;
+            }
+
+            return div;
+}
+
+        // Función para regresar una tarea a la columna anterior
+        function regresarTarea(id, nuevoEstado) {
+            const tarea = tareas.find(t => t.id === id);
+            if (tarea) {
+                tarea.estado = nuevoEstado;
+                // Si la tarea estaba seleccionada (con cronómetro corriendo), lo detenemos
+                if (tareaSeleccionada === id) {
+                    clearInterval(intervalo);
+                    tareaSeleccionada = null;
+                }
+                renderizarTareas(); // Actualiza la interfaz
+                guardarTareas();    // Guarda cambios en localStorage
+            }
+        }
+
         // Inicializar la aplicación
         document.addEventListener('DOMContentLoaded', () => {
             cargarTareas();
