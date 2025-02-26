@@ -73,19 +73,25 @@
             div.dataset.id = tarea.id;
             div.innerHTML = `
                 <h3>${tarea.nombre}</h3>
-                <p>Tiempo: <span id="tiempo-${tarea.id}">${segundosAHHMMSS(tarea.tiempo)}</span></p>`;
+                <p>Tiempo: <span id="tiempo-${tarea.id}">${segundosAHHMMSS(tarea.tiempo)}</span></p>
+                <button onclick="subirTarea(${tarea.id})">Subir</button>
+                <button onclick="bajarTarea(${tarea.id})">Bajar</button>
+            `;
             if (tarea.estado === 'para-hacer') {
                 div.innerHTML += `<button onclick="moverTarea(${tarea.id}, 'haciendo')">Iniciar</button>`;
                 div.innerHTML += `<button onclick="editarTarea(${tarea.id})">Editar</button>`;
             } else if (tarea.estado === 'haciendo') {
                 div.innerHTML += `<button onclick="moverTarea(${tarea.id}, 'finalizadas')">Finalizar</button>`;
                 div.innerHTML += `<button onclick="editarTarea(${tarea.id})">Editar</button>`;
+                div.innerHTML += `<button onclick="regresarTarea(${tarea.id}, 'para-hacer')">Regresar a Para hacer</button>`;
                 div.addEventListener('click', () => seleccionarTarea(tarea.id));
+            } else if (tarea.estado === 'finalizadas') {
+                div.innerHTML += `<button onclick="regresarTarea(${tarea.id}, 'haciendo')">Regresar a Haciendo</button>`;
             }
             return div;
-}
+        }
 
-        // Renderizar todas las tareas en sus respectivas columnas
+        // Renderizar todas las tareas en sus respectivas columnas, ordenadas por 'orden'
         function renderizarTareas() {
             const paraHacerDiv = document.querySelector('#para-hacer .tareas-contenedor');
             const haciendoDiv = document.querySelector('#haciendo .tareas-contenedor');
@@ -95,18 +101,26 @@
             haciendoDiv.innerHTML = '';
             finalizadasDiv.innerHTML = '';
 
-            tareas.forEach(tarea => {
+            // Filtrar y ordenar tareas por 'orden' dentro de cada estado
+            const paraHacerTareas = tareas.filter(t => t.estado === 'para-hacer').sort((a, b) => a.orden - b.orden);
+            const haciendoTareas = tareas.filter(t => t.estado === 'haciendo').sort((a, b) => a.orden - b.orden);
+            const finalizadasTareas = tareas.filter(t => t.estado === 'finalizadas').sort((a, b) => a.orden - b.orden);
+
+            paraHacerTareas.forEach(tarea => {
                 const tareaElement = crearTareaElement(tarea);
-                if (tarea.estado === 'para-hacer') {
-                    paraHacerDiv.appendChild(tareaElement);
-                } else if (tarea.estado === 'haciendo') {
-                    haciendoDiv.appendChild(tareaElement);
-                } else if (tarea.estado === 'finalizadas') {
-                    finalizadasDiv.appendChild(tareaElement);
-                }
-                if (tarea.id === tareaSeleccionada) {
-                    tareaElement.classList.add('seleccionada');
-                }
+                paraHacerDiv.appendChild(tareaElement);
+                if (tarea.id === tareaSeleccionada) tareaElement.classList.add('seleccionada');
+            });
+
+            haciendoTareas.forEach(tarea => {
+                const tareaElement = crearTareaElement(tarea);
+                haciendoDiv.appendChild(tareaElement);
+                if (tarea.id === tareaSeleccionada) tareaElement.classList.add('seleccionada');
+            });
+
+            finalizadasTareas.forEach(tarea => {
+                const tareaElement = crearTareaElement(tarea);
+                finalizadasDiv.appendChild(tareaElement);
             });
         }
 
@@ -130,11 +144,13 @@
             }
         }
 
-        // Mover una tarea a otra columna
+        // Mover una tarea a otra columna y ajustar su orden
         function moverTarea(id, nuevoEstado) {
             const tarea = tareas.find(t => t.id === id);
             if (tarea) {
                 tarea.estado = nuevoEstado;
+                const maxOrden = Math.max(...tareas.filter(t => t.estado === nuevoEstado).map(t => t.orden || 0), 0);
+                tarea.orden = maxOrden + 1;
                 if (nuevoEstado === 'finalizadas' && tareaSeleccionada === id) {
                     clearInterval(intervalo);
                     tareaSeleccionada = null;
@@ -144,15 +160,63 @@
             }
         }
 
-        // Agregar una nueva tarea
+        // Regresar una tarea a la columna anterior y ajustar su orden
+        function regresarTarea(id, nuevoEstado) {
+            const tarea = tareas.find(t => t.id === id);
+            if (tarea) {
+                tarea.estado = nuevoEstado;
+                const maxOrden = Math.max(...tareas.filter(t => t.estado === nuevoEstado).map(t => t.orden || 0), 0);
+                tarea.orden = maxOrden + 1;
+                if (tareaSeleccionada === id) {
+                    clearInterval(intervalo);
+                    tareaSeleccionada = null;
+                }
+                renderizarTareas();
+                guardarTareas();
+            }
+        }
+
+        // Subir una tarea en su columna
+        function subirTarea(id) {
+            const tarea = tareas.find(t => t.id === id);
+            if (tarea) {
+                const tareasEnColumna = tareas.filter(t => t.estado === tarea.estado).sort((a, b) => a.orden - b.orden);
+                const index = tareasEnColumna.findIndex(t => t.id === id);
+                if (index > 0) {
+                    const tareaAnterior = tareasEnColumna[index - 1];
+                    [tarea.orden, tareaAnterior.orden] = [tareaAnterior.orden, tarea.orden];
+                    renderizarTareas();
+                    guardarTareas();
+                }
+            }
+        }
+
+        // Bajar una tarea en su columna
+        function bajarTarea(id) {
+            const tarea = tareas.find(t => t.id === id);
+            if (tarea) {
+                const tareasEnColumna = tareas.filter(t => t.estado === tarea.estado).sort((a, b) => a.orden - b.orden);
+                const index = tareasEnColumna.findIndex(t => t.id === id);
+                if (index < tareasEnColumna.length - 1) {
+                    const tareaSiguiente = tareasEnColumna[index + 1];
+                    [tarea.orden, tareaSiguiente.orden] = [tareaSiguiente.orden, tarea.orden];
+                    renderizarTareas();
+                    guardarTareas();
+                }
+            }
+        }
+
+        // Agregar una nueva tarea con orden inicial
         function agregarTarea() {
             const nombre = prompt('Ingrese el nombre de la tarea:');
             if (nombre) {
+                const maxOrden = Math.max(...tareas.filter(t => t.estado === 'para-hacer').map(t => t.orden || 0), 0);
                 const nuevaTarea = {
                     id: generarId(),
                     nombre: nombre,
                     estado: 'para-hacer',
-                    tiempo: 0
+                    tiempo: 0,
+                    orden: maxOrden + 1
                 };
                 tareas.push(nuevaTarea);
                 renderizarTareas();
@@ -171,11 +235,15 @@
             const tareasGuardadas = localStorage.getItem('tareas');
             if (tareasGuardadas) {
                 tareas = JSON.parse(tareasGuardadas);
+                tareas.forEach(tarea => {
+                    if (tarea.orden === undefined) tarea.orden = 0; // Asignar orden por defecto si no existe
+                });
                 idCounter = parseInt(localStorage.getItem('idCounter')) || 0;
                 renderizarTareas();
             }
         }
 
+        // Editar el nombre de una tarea
         function editarTarea(id) {
             const tarea = tareas.find(t => t.id === id);
             if (tarea && (tarea.estado === 'para-hacer' || tarea.estado === 'haciendo')) {
@@ -185,47 +253,6 @@
                     renderizarTareas();
                     guardarTareas();
                 }
-            }
-        }
-
-        // Función para crear el elemento HTML de una tarea
-        function crearTareaElement(tarea) {
-            const div = document.createElement('div');
-            div.classList.add('tarea');
-            div.dataset.id = tarea.id;
-            div.innerHTML = `
-                <h3>${tarea.nombre}</h3>
-                <p>Tiempo: <span id="tiempo-${tarea.id}">${segundosAHHMMSS(tarea.tiempo)}</span></p>
-            `;
-
-            // Botones según el estado de la tarea
-            if (tarea.estado === 'para-hacer') {
-                div.innerHTML += `<button onclick="moverTarea(${tarea.id}, 'haciendo')">Iniciar</button>`;
-                div.innerHTML += `<button onclick="editarTarea(${tarea.id})">Editar</button>`;
-            } else if (tarea.estado === 'haciendo') {
-                div.innerHTML += `<button onclick="moverTarea(${tarea.id}, 'finalizadas')">Finalizar</button>`;
-                div.innerHTML += `<button onclick="editarTarea(${tarea.id})">Editar</button>`;
-                div.innerHTML += `<button onclick="regresarTarea(${tarea.id}, 'para-hacer')">Regresar a Para hacer</button>`;
-                div.addEventListener('click', () => seleccionarTarea(tarea.id));
-            } else if (tarea.estado === 'finalizadas') {
-                div.innerHTML += `<button onclick="regresarTarea(${tarea.id}, 'haciendo')">Regresar a Haciendo</button>`;
-            }
-
-            return div;
-}
-
-        // Función para regresar una tarea a la columna anterior
-        function regresarTarea(id, nuevoEstado) {
-            const tarea = tareas.find(t => t.id === id);
-            if (tarea) {
-                tarea.estado = nuevoEstado;
-                // Si la tarea estaba seleccionada (con cronómetro corriendo), lo detenemos
-                if (tareaSeleccionada === id) {
-                    clearInterval(intervalo);
-                    tareaSeleccionada = null;
-                }
-                renderizarTareas(); // Actualiza la interfaz
-                guardarTareas();    // Guarda cambios en localStorage
             }
         }
 
