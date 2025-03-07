@@ -1,0 +1,40 @@
+#app {
+    display: flex;
+    justify-content: space-around;
+}
+
+.columna {
+    width: 30%;
+    border: 1px solid #ccc;
+    padding: 10px;
+    min-height: 300px;
+}
+
+.columna h2 {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.tareas-contenedor {
+    min-height: 200px;
+}
+
+.tarea {
+    border: 1px solid #ddd;
+    margin: 5px 0;
+    padding: 10px;
+    cursor: pointer;
+    background-color: #f9f9f9;
+}
+
+.tarea.seleccionada {
+    background-color: #e0f7fa;
+}
+
+button {
+    margin-top: 10px;
+    padding: 5px 10px;
+    cursor: pointer;
+    margin-right: 5px;
+    margin-bottom: 10px;
+}

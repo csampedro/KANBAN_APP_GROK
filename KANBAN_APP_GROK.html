@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -261,5 +261,36 @@
             cargarTareas();
         });
     </script>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Tareas con Cronómetro</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <div id="para-hacer" class="columna">
+            <h2>Para hacer</h2>
+            <div class="tareas-contenedor"></div>
+        </div>
+        <div id="haciendo" class="columna">
+            <h2>Haciendo</h2>
+            <div class="tareas-contenedor"></div>
+        </div>
+        <div id="finalizadas" class="columna">
+            <h2>Finalizadas</h2>
+            <div class="tareas-contenedor"></div>
+        </div>
+    </div>
+    <button id="agregar-tarea">Agregar Tarea</button>
+    
+    <script src="js/utilities/storage.js"></script>
+    <script src="js/classes/Task.js"></script>
+    <script src="js/classes/TaskManager.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>
