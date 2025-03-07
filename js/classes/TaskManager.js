@@ -45,20 +45,22 @@ window.TaskManager = (function() {
     }
 
     function seleccionarTarea(id) {
-        console.log('Intentando seleccionar tarea con ID:', id); // Depuración
         const tarea = tareas.find(t => t.id.toString() === id.toString());
         if (tarea && tarea.estado === 'haciendo') {
-            console.log('Tarea encontrada y en "haciendo":', tarea); // Depuración
             if (tareaSeleccionada && tareaSeleccionada.id.toString() === id.toString()) {
-                console.log('Tarea ya seleccionada, deteniendo cronómetro');
+                // Si la tarea ya está seleccionada, detener el cronómetro
                 detenerCronometro();
                 tareaSeleccionada = null;
             } else {
+                // Si es otra tarea, detener el cronómetro actual y seleccionar la nueva
+                if (tareaSeleccionada) {
+                    detenerCronometro();
+                }
                 tareaSeleccionada = tarea;
                 iniciarCronometro();
             }
         } else {
-            console.log('Tarea no encontrada o no en "haciendo", deteniendo cronómetro'); // Depuración
+            // Si la tarea no está en "haciendo", detener el cronómetro
             detenerCronometro();
             tareaSeleccionada = null;
         }
@@ -66,27 +68,18 @@ window.TaskManager = (function() {
     }
 
     function iniciarCronometro() {
-        console.log('Iniciando cronómetro para tarea:', tareaSeleccionada?.id); // Depuración
         if (tareaSeleccionada && !intervalo) {
             intervalo = setInterval(() => {
-                console.log('Incrementando tiempo para tarea ID:', tareaSeleccionada.id); // Depuración
                 tareaSeleccionada.incrementarTiempo();
                 renderizarTareas();
             }, 1000);
-        } else if (!tareaSeleccionada) {
-            console.log('No hay tarea seleccionada para iniciar el cronómetro'); // Depuración
-        } else {
-            console.log('Cronómetro ya activo, no se reinicia'); // Depuración
         }
     }
 
     function detenerCronometro() {
         if (intervalo) {
-            console.log('Deteniendo cronómetro para tarea ID:', tareaSeleccionada?.id); // Depuración
             clearInterval(intervalo);
             intervalo = null;
-        } else {
-            console.log('No hay cronómetro activo para detener'); // Depuración
         }
     }
 
@@ -143,28 +136,31 @@ window.TaskManager = (function() {
                 const div = document.createElement('div');
                 div.classList.add('tarea');
                 div.dataset.id = tarea.id;
+                // Agregar evento onclick al div para iniciar/detener el cronómetro
+                div.setAttribute('onclick', `TaskManager.seleccionarTarea('${tarea.id}')`);
                 div.innerHTML = `
                     <h3>${tarea.nombre}</h3>
                     <p>Tiempo: <span id="tiempo-${tarea.id}">${formatTime(tarea.tiempo)}</span></p>
-                    <button onclick="TaskManager.subirTarea('${tarea.id}')">Subir</button>
-                    <button onclick="TaskManager.bajarTarea('${tarea.id}')">Bajar</button>
                 `;
+
+                // Botones con stopPropagation para evitar interferencia con el clic en la tarea
                 if (tarea.estado === 'para-hacer') {
                     div.innerHTML += `
-                        <button onclick="TaskManager.moverTarea('${tarea.id}', 'haciendo')">Iniciar</button>
-                        <button onclick="TaskManager.editarTarea('${tarea.id}', prompt('Nuevo nombre:', '${tarea.nombre}'))">Editar</button>
+                        <button onclick="event.stopPropagation(); TaskManager.moverTarea('${tarea.id}', 'haciendo')">Iniciar</button>
+                        <button onclick="event.stopPropagation(); TaskManager.editarTarea('${tarea.id}', prompt('Nuevo nombre:', '${tarea.nombre}'))">Editar</button>
                     `;
                 } else if (tarea.estado === 'haciendo') {
                     div.innerHTML += `
-                        <button onclick="TaskManager.moverTarea('${tarea.id}', 'finalizadas')">Finalizar</button>
-                        <button onclick="TaskManager.editarTarea('${tarea.id}', prompt('Nuevo nombre:', '${tarea.nombre}'))">Editar</button>
-                        <button onclick="TaskManager.regresarTarea('${tarea.id}', 'para-hacer')">Regresar a Para hacer</button>
-                        <button onclick="TaskManager.seleccionarTarea('${tarea.id}')">Seleccionar</button>
+                        <button onclick="event.stopPropagation(); TaskManager.moverTarea('${tarea.id}', 'finalizadas')">Finalizar</button>
+                        <button onclick="event.stopPropagation(); TaskManager.editarTarea('${tarea.id}', prompt('Nuevo nombre:', '${tarea.nombre}'))">Editar</button>
+                        <button onclick="event.stopPropagation(); TaskManager.regresarTarea('${tarea.id}', 'para-hacer')">Regresar a Para hacer</button>
                     `;
-                    if (tareaSeleccionada?.id.toString() === tarea.id.toString()) div.classList.add('seleccionada');
+                    if (tareaSeleccionada?.id.toString() === tarea.id.toString()) {
+                        div.classList.add('seleccionada');
+                    }
                 } else if (tarea.estado === 'finalizadas') {
                     div.innerHTML += `
-                        <button onclick="TaskManager.regresarTarea('${tarea.id}', 'haciendo')">Regresar a Haciendo</button>
+                        <button onclick="event.stopPropagation(); TaskManager.regresarTarea('${tarea.id}', 'haciendo')">Regresar a Haciendo</button>
                     `;
                 }
                 columnas[estado].appendChild(div);
