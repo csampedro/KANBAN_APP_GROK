@@ -3,6 +3,7 @@ window.TaskManager = (function() {
     let tareas = [];
     let tareaSeleccionada = null;
     let intervalo = null;
+    let intervaloGuardado = null;
     let idCounter = 0;
 
     function generarId() {
@@ -48,20 +49,27 @@ window.TaskManager = (function() {
         const tarea = tareas.find(t => t.id.toString() === id.toString());
         if (tarea && tarea.estado === 'haciendo') {
             if (tareaSeleccionada && tareaSeleccionada.id.toString() === id.toString()) {
-                // Si la tarea ya está seleccionada, detener el cronómetro
+                // Si la tarea ya está seleccionada, detener el cronómetro y el guardado
                 detenerCronometro();
+                detenerGuardadoAutomatico(); // Detener el guardado automático
                 tareaSeleccionada = null;
+                saveAndRender(); // Guardar inmediatamente al deseleccionar
             } else {
-                // Si es otra tarea, detener el cronómetro actual y seleccionar la nueva
+                // Si es otra tarea, detener el cronómetro y guardado actual
                 if (tareaSeleccionada) {
                     detenerCronometro();
+                    detenerGuardadoAutomatico(); // Detener el guardado automático
+                    saveAndRender(); // Guardar inmediatamente al seleccionar
                 }
                 tareaSeleccionada = tarea;
                 iniciarCronometro();
+                iniciarGuardadoAutomatico(); // Iniciar el guardado automático
+                saveAndRender(); // Guardar inmediatamente al deseleccionar o seleccionar tarea no válida
             }
         } else {
-            // Si la tarea no está en "haciendo", detener el cronómetro
+            // Si la tarea no está en "haciendo", detener el cronómetro y guardado
             detenerCronometro();
+            detenerGuardadoAutomatico(); // Detener el guardado automático
             tareaSeleccionada = null;
         }
         renderizarTareas();
@@ -80,6 +88,25 @@ window.TaskManager = (function() {
         if (intervalo) {
             clearInterval(intervalo);
             intervalo = null;
+        }
+    }
+
+    // Nueva función para iniciar el guardado automático cada minuto
+    function iniciarGuardadoAutomatico() {
+        if (!intervaloGuardado) {
+            intervaloGuardado = setInterval(() => {
+                if (tareaSeleccionada) {
+                    saveAndRender(); // Guardar las tareas si hay una seleccionada
+                }
+            }, 60000); // 60000 ms = 1 minuto
+        }
+    }
+
+    // Nueva función para detener el guardado automático
+    function detenerGuardadoAutomatico() {
+        if (intervaloGuardado) {
+            clearInterval(intervaloGuardado);
+            intervaloGuardado = null;
         }
     }
 
@@ -128,10 +155,10 @@ window.TaskManager = (function() {
             'haciendo': document.querySelector('#haciendo .tareas-contenedor'),
             'finalizadas': document.querySelector('#finalizadas .tareas-contenedor')
         };
-
+    
         Object.keys(columnas).forEach(estado => {
             columnas[estado].innerHTML = '';
-            const tareasEstado = tareas.filter(t => t.estado === estado).sort((a, b) => a.orden - b.orden);
+            const tareasEstado = tareas.filter(t => t.estado === estado).sort((a, b) => (a.orden || 0) - (b.orden || 0));
             tareasEstado.forEach(tarea => {
                 const div = document.createElement('div');
                 div.classList.add('tarea');
@@ -142,8 +169,8 @@ window.TaskManager = (function() {
                     <h3>${tarea.nombre}</h3>
                     <p>Tiempo: <span id="tiempo-${tarea.id}">${formatTime(tarea.tiempo)}</span></p>
                 `;
-
-                // Botones con stopPropagation para evitar interferencia con el clic en la tarea
+    
+                // Botones existentes según el estado
                 if (tarea.estado === 'para-hacer') {
                     div.innerHTML += `
                         <button onclick="event.stopPropagation(); TaskManager.moverTarea('${tarea.id}', 'haciendo')">Iniciar</button>
@@ -163,6 +190,16 @@ window.TaskManager = (function() {
                         <button onclick="event.stopPropagation(); TaskManager.regresarTarea('${tarea.id}', 'haciendo')">Regresar a Haciendo</button>
                     `;
                 }
+    
+                // // Agregar botones de subir y bajar para todas las columnas
+                const index = tareasEstado.findIndex(t => t.id === tarea.id);
+                const esPrimera = index === 0;
+                const esUltima = index === tareasEstado.length - 1;
+                div.innerHTML += `
+                    <button onclick="event.stopPropagation(); TaskManager.subirTarea('${tarea.id}')" ${esPrimera ? 'disabled' : ''}>Subir</button>
+                    <button onclick="event.stopPropagation(); TaskManager.bajarTarea('${tarea.id}')" ${esUltima ? 'disabled' : ''}>Bajar</button>
+                `;
+                    
                 columnas[estado].appendChild(div);
             });
         });
