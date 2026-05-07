@@ -1,40 +1,168 @@
+:root {
+    --bg-primary: #f8f9fa;
+    --bg-card: #ffffff;
+    --text-main: #1e293b; /* Slate 800 */
+    --text-muted: #64748b; /* Slate 500 */
+    --accent-color: #6366f1; /* Indigo 500 */
+    --accent-success: #10b981; /* Emerald 500 */
+    --accent-warning: #f59e0b; /* Amber 500 */
+    --column-bg: #f1f5f9;
+    --border-radius: 12px;
+    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --transition: all 0.2s ease-in-out;
+}
+
+[data-theme='dark'] {
+    --bg-primary: #020617; /* Slate 950 */
+    --bg-card: #1e293b; /* Slate 800 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-muted: #94a3b8; /* Slate 400 */
+    --column-bg: #0f172a; /* Slate 900 */
+    --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+    --border-color: #334155; /* Slate 700 */
+}
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-main);
+    margin: 0;
+    padding: 20px;
+}
+
 #app {
     display: flex;
-    justify-content: space-around;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
 .columna {
-    width: 30%;
-    border: 1px solid #ccc;
-    padding: 10px;
-    min-height: 300px;
+    flex: 1;
+    min-width: 320px;
+    background: var(--column-bg);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    min-height: 80vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .columna h2 {
-    text-align: center;
-    margin-bottom: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 24px;
 }
 
 .tareas-contenedor {
-    min-height: 200px;
+    flex-grow: 1;
 }
 
 .tarea {
-    border: 1px solid #ddd;
-    margin: 5px 0;
-    padding: 10px;
+    background: var(--bg-card);
+    border-radius: var(--border-radius);
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    border-left: 4px solid var(--accent-color);
     cursor: pointer;
-    background-color: #f9f9f9;
+}
+
+.tarea:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
 
 .tarea.seleccionada {
-    background-color: #e0f7fa;
+    border-color: var(--accent-success);
+    background-color: #ecfdf5;
+    animation: pulse-border 2s infinite;
 }
 
-button {
-    margin-top: 10px;
-    padding: 5px 10px;
+@keyframes pulse-border {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.btn-icon {
+    background: transparent;
+    border: none;
     cursor: pointer;
-    margin-right: 5px;
-    margin-bottom: 10px;
+    padding: 6px;
+    border-radius: 6px;
+    color: var(--text-muted);
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon:hover:not(:disabled) {
+    background-color: #f1f5f9;
+    color: var(--accent-color);
+}
+
+.btn-icon:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+#agregar-tarea-container {
+    text-align: center;
+    margin-top: 40px;
+}
+
+#agregar-tarea {
+    padding: 12px 24px;
+    border-radius: 9999px;
+    border: none;
+    background: var(--accent-color);
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+#toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#theme-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1001;
+    background: var(--bg-card);
+    border: 1px solid var(--text-muted);
+    box-shadow: var(--shadow);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+}
+
+.sortable-ghost {
+    opacity: 0.4;
+    background-color: var(--column-bg) !important;
+    border: 2px dashed var(--accent-color) !important;
 }

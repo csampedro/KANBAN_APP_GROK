@@ -10,10 +10,28 @@ window.TaskManager = (function() {
         return ++idCounter;
     }
 
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        const targetTheme = currentTheme === 'light' ? 'dark' : 'light';
+        
+        document.documentElement.setAttribute('data-theme', targetTheme);
+        localStorage.setItem('kanban-theme', targetTheme);
+        updateThemeIcon(targetTheme);
+    }
+
+    function updateThemeIcon(theme) {
+        const btn = document.getElementById('theme-toggle');
+        if (btn) {
+            btn.innerHTML = theme === 'dark' ? '<i data-lucide="sun"></i>' : '<i data-lucide="moon"></i>';
+            if (window.lucide) window.lucide.createIcons();
+        }
+    }
+
     function agregarTarea(nombre) {
         const maxOrden = Math.max(...tareas.filter(t => t.estado === 'para-hacer').map(t => t.orden || 0), 0);
         const nuevaTarea = new Task(generarId(), nombre, 'para-hacer', 0, maxOrden + 1);
         tareas.push(nuevaTarea);
+        showToast(`Tarea "${nombre}" creada`);
         saveAndRender();
     }
 
@@ -26,6 +44,9 @@ window.TaskManager = (function() {
             if (nuevoEstado === 'finalizadas' && tareaSeleccionada?.id.toString() === id.toString()) {
                 detenerCronometro();
                 tareaSeleccionada = null;
+            }
+            if (nuevoEstado === 'finalizadas') {
+                showToast("¡Tarea finalizada!");
             }
             saveAndRender();
         }
@@ -149,6 +170,41 @@ window.TaskManager = (function() {
         window.guardarTareas(tareas, idCounter);
     }
 
+    function initSortable() {
+        const contenedores = document.querySelectorAll('.tareas-contenedor');
+        contenedores.forEach(el => {
+            new Sortable(el, {
+                group: 'kanban',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: function (evt) {
+                    const id = evt.item.dataset.id;
+                    const nuevoEstado = evt.to.closest('.columna').id;
+                    
+                    // Buscar la tarea y actualizar su estado
+                    const tarea = tareas.find(t => t.id.toString() === id.toString());
+                    if (tarea) {
+                        tarea.actualizarEstado(nuevoEstado);
+                    }
+
+                    // Re-calcular el orden de todas las tareas en la columna de destino
+                    const itemElements = Array.from(evt.to.children);
+                    itemElements.forEach((el, index) => {
+                        const t = tareas.find(task => task.id.toString() === el.dataset.id.toString());
+                        if (t) t.actualizarOrden(index + 1);
+                    });
+
+                    // Si se mueve fuera de 'haciendo' y era la seleccionada, detener cronómetro
+                    if (nuevoEstado !== 'haciendo' && tareaSeleccionada?.id.toString() === id.toString()) {
+                        detenerCronometro();
+                        tareaSeleccionada = null;
+                    }
+                    saveAndRender();
+                },
+            });
+        });
+    }
+
     function renderizarTareas() {
         const columnas = {
             'para-hacer': document.querySelector('#para-hacer .tareas-contenedor'),
@@ -168,40 +224,39 @@ window.TaskManager = (function() {
                 div.innerHTML = `
                     <h3>${tarea.nombre}</h3>
                     <p>Tiempo: <span id="tiempo-${tarea.id}">${formatTime(tarea.tiempo)}</span></p>
+                    <div class="actions"></div>
                 `;
     
+                const actionsDiv = div.querySelector('.actions');
+
                 // Botones existentes según el estado
                 if (tarea.estado === 'para-hacer') {
-                    div.innerHTML += `
-                        <button onclick="event.stopPropagation(); TaskManager.moverTarea('${tarea.id}', 'haciendo')">Iniciar</button>
-                        <button onclick="event.stopPropagation(); TaskManager.editarTarea('${tarea.id}', prompt('Nuevo nombre:', '${tarea.nombre}'))">Editar</button>
+                    actionsDiv.innerHTML += `
+                        <button class="btn-icon" title="Iniciar" onclick="event.stopPropagation(); TaskManager.moverTarea('${tarea.id}', 'haciendo')"><i data-lucide="play"></i></button>
+                        <button class="btn-icon" title="Editar" onclick="event.stopPropagation(); TaskManager.editarTarea('${tarea.id}', prompt('Nuevo nombre:', '${tarea.nombre}'))"><i data-lucide="edit-3"></i></button>
                     `;
                 } else if (tarea.estado === 'haciendo') {
-                    div.innerHTML += `
-                        <button onclick="event.stopPropagation(); TaskManager.moverTarea('${tarea.id}', 'finalizadas')">Finalizar</button>
-                        <button onclick="event.stopPropagation(); TaskManager.editarTarea('${tarea.id}', prompt('Nuevo nombre:', '${tarea.nombre}'))">Editar</button>
-                        <button onclick="event.stopPropagation(); TaskManager.regresarTarea('${tarea.id}', 'para-hacer')">Regresar a Para hacer</button>
+                    actionsDiv.innerHTML += `
+                        <button class="btn-icon" title="Finalizar" onclick="event.stopPropagation(); TaskManager.moverTarea('${tarea.id}', 'finalizadas')"><i data-lucide="check-circle"></i></button>
+                        <button class="btn-icon" title="Editar" onclick="event.stopPropagation(); TaskManager.editarTarea('${tarea.id}', prompt('Nuevo nombre:', '${tarea.nombre}'))"><i data-lucide="edit-3"></i></button>
+                        <button class="btn-icon" title="Regresar" onclick="event.stopPropagation(); TaskManager.regresarTarea('${tarea.id}', 'para-hacer')"><i data-lucide="rotate-ccw"></i></button>
                     `;
                     if (tareaSeleccionada?.id.toString() === tarea.id.toString()) {
                         div.classList.add('seleccionada');
                     }
                 } else if (tarea.estado === 'finalizadas') {
-                    div.innerHTML += `
-                        <button onclick="event.stopPropagation(); TaskManager.regresarTarea('${tarea.id}', 'haciendo')">Regresar a Haciendo</button>
+                    actionsDiv.innerHTML += `
+                        <button class="btn-icon" title="Reabrir" onclick="event.stopPropagation(); TaskManager.regresarTarea('${tarea.id}', 'haciendo')"><i data-lucide="external-link"></i></button>
                     `;
                 }
     
-                // // Agregar botones de subir y bajar para todas las columnas
-                const index = tareasEstado.findIndex(t => t.id === tarea.id);
-                const esPrimera = index === 0;
-                const esUltima = index === tareasEstado.length - 1;
-                div.innerHTML += `
-                    <button onclick="event.stopPropagation(); TaskManager.subirTarea('${tarea.id}')" ${esPrimera ? 'disabled' : ''}>Subir</button>
-                    <button onclick="event.stopPropagation(); TaskManager.bajarTarea('${tarea.id}')" ${esUltima ? 'disabled' : ''}>Bajar</button>
-                `;
-                    
                 columnas[estado].appendChild(div);
             });
+            
+            // Inicializar iconos de Lucide después de renderizar
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
         });
     }
 
@@ -222,9 +277,30 @@ window.TaskManager = (function() {
         console.log("Tareas cargadas desde localStorage:", tareas);
     }
 
+    function showToast(message) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            background: #2d3436; color: white; padding: 12px 20px; 
+            border-radius: 8px; margin-top: 10px; box-shadow: var(--shadow);
+            animation: slideIn 0.3s ease-out;
+        `;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+
+    // Inicializar Tema
+    const savedTheme = localStorage.getItem('kanban-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    
     // Cargar tareas al inicio y renderizar
     loadTasks();
     renderizarTareas();
+    initSortable();
+    setTimeout(() => updateThemeIcon(savedTheme), 100); // Pequeño delay para asegurar carga de DOM
 
     // Exponer funciones públicas
     return {
@@ -234,6 +310,7 @@ window.TaskManager = (function() {
         seleccionarTarea,
         iniciarCronometro,
         detenerCronometro,
+        toggleTheme,
         editarTarea,
         subirTarea,
         bajarTarea,

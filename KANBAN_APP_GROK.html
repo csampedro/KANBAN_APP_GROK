@@ -268,11 +268,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestor de Tareas con Cronómetro</title>
+    <title>Kanban Pro - Gestor de Tareas</title>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SortableJS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <button id="agregar-tarea">Agregar Tarea</button>
+    <button id="theme-toggle" class="btn-icon" onclick="TaskManager.toggleTheme()" title="Cambiar tema">
+        <i data-lucide="moon"></i>
+    </button>
+
     <div id="app">
         <div id="para-hacer" class="columna">
             <h2>Para hacer</h2>
@@ -287,6 +295,12 @@
             <div class="tareas-contenedor"></div>
         </div>
     </div>
+    
+    <div id="agregar-tarea-container">
+        <button id="agregar-tarea">+ Agregar Tarea</button>
+    </div>
+
+    <div id="toast-container"></div>
     
     <script src="js/utilities/storage.js"></script>
     <script src="js/classes/Task.js"></script>

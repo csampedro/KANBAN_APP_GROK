@@ -1,0 +1,394 @@
+<!-- <!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Tareas con Cronómetro</title>
+    <style>
+        #app {
+            display: flex;
+            justify-content: space-around;
+        }
+        .columna {
+            width: 30%;
+            border: 1px solid #ccc;
+            padding: 10px;
+            min-height: 300px;
+        }
+        .tarea {
+            border: 1px solid #ddd;
+            margin: 5px 0;
+            padding: 10px;
+            cursor: pointer;
+            background-color: #f9f9f9;
+        }
+        .tarea.seleccionada {
+            background-color: #e0f7fa;
+        }
+        button {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="para-hacer" class="columna">
+            <h2>Para hacer</h2>
+            <div class="tareas-contenedor"></div>
+        </div>
+        <div id="haciendo" class="columna">
+            <h2>Haciendo</h2>
+            <div class="tareas-contenedor"></div>
+        </div>
+        <div id="finalizadas" class="columna">
+            <h2>Finalizadas</h2>
+            <div class="tareas-contenedor"></div>
+        </div>
+    </div>
+    <button onclick="agregarTarea()">Agregar Tarea</button>
+
+    <script>
+        let tareas = [];
+        let tareaSeleccionada = null;
+        let intervalo = null;
+        let idCounter = 0;
+
+        // Generar un ID único para cada tarea
+        function generarId() {
+            return ++idCounter;
+        }
+
+        // Convertir segundos a hh:mm:ss
+        function segundosAHHMMSS(segundos) {
+            const horas = Math.floor(segundos / 3600);
+            const minutos = Math.floor((segundos % 3600) / 60);
+            const secs = segundos % 60;
+            return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        // Crear el elemento HTML para una tarea
+        function crearTareaElement(tarea) {
+            const div = document.createElement('div');
+            div.classList.add('tarea');
+            div.dataset.id = tarea.id;
+            div.innerHTML = `
+                <h3>${tarea.nombre}</h3>
+                <p>Tiempo: <span id="tiempo-${tarea.id}">${segundosAHHMMSS(tarea.tiempo)}</span></p>
+                <button onclick="subirTarea(${tarea.id})">Subir</button>
+                <button onclick="bajarTarea(${tarea.id})">Bajar</button>
+            `;
+            if (tarea.estado === 'para-hacer') {
+                div.innerHTML += `<button onclick="moverTarea(${tarea.id}, 'haciendo')">Iniciar</button>`;
+                div.innerHTML += `<button onclick="editarTarea(${tarea.id})">Editar</button>`;
+            } else if (tarea.estado === 'haciendo') {
+                div.innerHTML += `<button onclick="moverTarea(${tarea.id}, 'finalizadas')">Finalizar</button>`;
+                div.innerHTML += `<button onclick="editarTarea(${tarea.id})">Editar</button>`;
+                div.innerHTML += `<button onclick="regresarTarea(${tarea.id}, 'para-hacer')">Regresar a Para hacer</button>`;
+                div.addEventListener('click', () => seleccionarTarea(tarea.id));
+            } else if (tarea.estado === 'finalizadas') {
+                div.innerHTML += `<button onclick="regresarTarea(${tarea.id}, 'haciendo')">Regresar a Haciendo</button>`;
+            }
+            return div;
+        }
+
+        // Renderizar todas las tareas en sus respectivas columnas, ordenadas por 'orden'
+        function renderizarTareas() {
+            const paraHacerDiv = document.querySelector('#para-hacer .tareas-contenedor');
+            const haciendoDiv = document.querySelector('#haciendo .tareas-contenedor');
+            const finalizadasDiv = document.querySelector('#finalizadas .tareas-contenedor');
+
+            paraHacerDiv.innerHTML = '';
+            haciendoDiv.innerHTML = '';
+            finalizadasDiv.innerHTML = '';
+
+            // Filtrar y ordenar tareas por 'orden' dentro de cada estado
+            const paraHacerTareas = tareas.filter(t => t.estado === 'para-hacer').sort((a, b) => a.orden - b.orden);
+            const haciendoTareas = tareas.filter(t => t.estado === 'haciendo').sort((a, b) => a.orden - b.orden);
+            const finalizadasTareas = tareas.filter(t => t.estado === 'finalizadas').sort((a, b) => a.orden - b.orden);
+
+            paraHacerTareas.forEach(tarea => {
+                const tareaElement = crearTareaElement(tarea);
+                paraHacerDiv.appendChild(tareaElement);
+                if (tarea.id === tareaSeleccionada) tareaElement.classList.add('seleccionada');
+            });
+
+            haciendoTareas.forEach(tarea => {
+                const tareaElement = crearTareaElement(tarea);
+                haciendoDiv.appendChild(tareaElement);
+                if (tarea.id === tareaSeleccionada) tareaElement.classList.add('seleccionada');
+            });
+
+            finalizadasTareas.forEach(tarea => {
+                const tareaElement = crearTareaElement(tarea);
+                finalizadasDiv.appendChild(tareaElement);
+            });
+        }
+
+        // Seleccionar una tarea y activar su cronómetro
+        function seleccionarTarea(id) {
+            if (tareaSeleccionada) {
+                clearInterval(intervalo);
+                const prevTareaElement = document.querySelector(`.tarea[data-id="${tareaSeleccionada}"]`);
+                if (prevTareaElement) prevTareaElement.classList.remove('seleccionada');
+            }
+            const tarea = tareas.find(t => t.id === id);
+            if (tarea && tarea.estado === 'haciendo') {
+                tareaSeleccionada = id;
+                const tareaElement = document.querySelector(`.tarea[data-id="${id}"]`);
+                tareaElement.classList.add('seleccionada');
+                intervalo = setInterval(() => {
+                    tarea.tiempo += 1;
+                    document.getElementById(`tiempo-${id}`).textContent = segundosAHHMMSS(tarea.tiempo);
+                    guardarTareas();
+                }, 1000);
+            }
+        }
+
+        // Mover una tarea a otra columna y ajustar su orden
+        function moverTarea(id, nuevoEstado) {
+            const tarea = tareas.find(t => t.id === id);
+            if (tarea) {
+                tarea.estado = nuevoEstado;
+                const maxOrden = Math.max(...tareas.filter(t => t.estado === nuevoEstado).map(t => t.orden || 0), 0);
+                tarea.orden = maxOrden + 1;
+                if (nuevoEstado === 'finalizadas' && tareaSeleccionada === id) {
+                    clearInterval(intervalo);
+                    tareaSeleccionada = null;
+                }
+                renderizarTareas();
+                guardarTareas();
+            }
+        }
+
+        // Regresar una tarea a la columna anterior y ajustar su orden
+        function regresarTarea(id, nuevoEstado) {
+            const tarea = tareas.find(t => t.id === id);
+            if (tarea) {
+                tarea.estado = nuevoEstado;
+                const maxOrden = Math.max(...tareas.filter(t => t.estado === nuevoEstado).map(t => t.orden || 0), 0);
+                tarea.orden = maxOrden + 1;
+                if (tareaSeleccionada === id) {
+                    clearInterval(intervalo);
+                    tareaSeleccionada = null;
+                }
+                renderizarTareas();
+                guardarTareas();
+            }
+        }
+
+        // Subir una tarea en su columna
+        function subirTarea(id) {
+            const tarea = tareas.find(t => t.id === id);
+            if (tarea) {
+                const tareasEnColumna = tareas.filter(t => t.estado === tarea.estado).sort((a, b) => a.orden - b.orden);
+                const index = tareasEnColumna.findIndex(t => t.id === id);
+                if (index > 0) {
+                    const tareaAnterior = tareasEnColumna[index - 1];
+                    [tarea.orden, tareaAnterior.orden] = [tareaAnterior.orden, tarea.orden];
+                    renderizarTareas();
+                    guardarTareas();
+                }
+            }
+        }
+
+        // Bajar una tarea en su columna
+        function bajarTarea(id) {
+            const tarea = tareas.find(t => t.id === id);
+            if (tarea) {
+                const tareasEnColumna = tareas.filter(t => t.estado === tarea.estado).sort((a, b) => a.orden - b.orden);
+                const index = tareasEnColumna.findIndex(t => t.id === id);
+                if (index < tareasEnColumna.length - 1) {
+                    const tareaSiguiente = tareasEnColumna[index + 1];
+                    [tarea.orden, tareaSiguiente.orden] = [tareaSiguiente.orden, tarea.orden];
+                    renderizarTareas();
+                    guardarTareas();
+                }
+            }
+        }
+
+        // Agregar una nueva tarea con orden inicial
+        function agregarTarea() {
+            const nombre = prompt('Ingrese el nombre de la tarea:');
+            if (nombre) {
+                const maxOrden = Math.max(...tareas.filter(t => t.estado === 'para-hacer').map(t => t.orden || 0), 0);
+                const nuevaTarea = {
+                    id: generarId(),
+                    nombre: nombre,
+                    estado: 'para-hacer',
+                    tiempo: 0,
+                    orden: maxOrden + 1
+                };
+                tareas.push(nuevaTarea);
+                renderizarTareas();
+                guardarTareas();
+            }
+        }
+
+        // Guardar las tareas en localStorage
+        function guardarTareas() {
+            localStorage.setItem('tareas', JSON.stringify(tareas));
+            localStorage.setItem('idCounter', idCounter);
+        }
+
+        // Cargar las tareas desde localStorage
+        function cargarTareas() {
+            const tareasGuardadas = localStorage.getItem('tareas');
+            if (tareasGuardadas) {
+                tareas = JSON.parse(tareasGuardadas);
+                tareas.forEach(tarea => {
+                    if (tarea.orden === undefined) tarea.orden = 0; // Asignar orden por defecto si no existe
+                });
+                idCounter = parseInt(localStorage.getItem('idCounter')) || 0;
+                renderizarTareas();
+            }
+        }
+
+        // Editar el nombre de una tarea
+        function editarTarea(id) {
+            const tarea = tareas.find(t => t.id === id);
+            if (tarea && (tarea.estado === 'para-hacer' || tarea.estado === 'haciendo')) {
+                const nuevoNombre = prompt('Ingrese el nuevo nombre de la tarea:', tarea.nombre);
+                if (nuevoNombre) {
+                    tarea.nombre = nuevoNombre;
+                    renderizarTareas();
+                    guardarTareas();
+                }
+            }
+        }
+
+        // Inicializar la aplicación
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarTareas();
+        });
+    </script>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Pro - Gestor de Tareas</title>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-primary: #f8f9fa;
+            --bg-card: #ffffff;
+            --text-main: #2d3436;
+            --accent-color: #0984e3;
+            --accent-success: #00b894;
+            --accent-warning: #fdcb6e;
+            --border-radius: 12px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+        }
+
+        #app {
+            display: flex;
+            gap: 20px;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+
+        .columna {
+            flex: 1;
+            min-width: 300px;
+            background: #dfe6e9;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            min-height: 80vh;
+        }
+
+        .columna h2 {
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #636e72;
+            margin-bottom: 20px;
+        }
+
+        .tarea {
+            background: var(--bg-card);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            border-left: 5px solid var(--accent-color);
+            cursor: pointer;
+        }
+
+        .tarea:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+
+        .tarea.seleccionada {
+            border-color: var(--accent-success);
+            background-color: #f0fff4;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 184, 148, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 184, 148, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 184, 148, 0); }
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            color: #636e72;
+            transition: var(--transition);
+        }
+
+        .btn-icon:hover:not(:disabled) { color: var(--accent-color); }
+        .btn-icon:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="para-hacer" class="columna">
+            <h2>Para hacer</h2>
+            <div class="tareas-contenedor"></div>
+        </div>
+        <div id="haciendo" class="columna">
+            <h2>Haciendo</h2>
+            <div class="tareas-contenedor"></div>
+        </div>
+        <div id="finalizadas" class="columna">
+            <h2>Finalizadas</h2>
+            <div class="tareas-contenedor"></div>
+        </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 30px;">
+        <button id="agregar-tarea" style="padding: 10px 20px; border-radius: 20px; border: none; background: var(--accent-color); color: white; cursor: pointer; font-weight: bold;">+ Agregar Tarea</button>
+    </div>
+
+    <div id="toast-container"></div>
+    
+    <script src="js/utilities/storage.js"></script>
+    <script src="js/classes/Task.js"></script>
+    <script src="js/classes/TaskManager.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

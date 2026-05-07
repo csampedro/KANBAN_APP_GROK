@@ -1,0 +1,80 @@
+installation:
+  version: 6.6.0
+  installDate: 2026-05-07T18:57:31.250Z
+  lastUpdated: 2026-05-07T18:57:31.250Z
+modules:
+  - name: core
+    version: 6.6.0
+    installDate: 2026-05-07T18:57:26.228Z
+    lastUpdated: 2026-05-07T18:57:30.654Z
+    source: built-in
+    npmPackage: null
+    repoUrl: null
+    channel: next
+  - name: bmm
+    version: 6.6.0
+    installDate: 2026-05-07T18:57:26.068Z
+    lastUpdated: 2026-05-07T18:57:30.656Z
+    source: built-in
+    npmPackage: null
+    repoUrl: null
+    channel: next
+  - name: bmb
+    version: v1.7.0
+    installDate: 2026-05-07T18:57:26.726Z
+    lastUpdated: 2026-05-07T18:57:30.734Z
+    source: external
+    npmPackage: bmad-builder
+    repoUrl: https://github.com/bmad-code-org/bmad-builder
+    channel: stable
+    sha: 86033fc9aeae2ca6d52c7cdb675c1f4bf17fc1c1
+  - name: cis
+    version: v0.2.0
+    installDate: 2026-05-07T18:57:26.991Z
+    lastUpdated: 2026-05-07T18:57:30.809Z
+    source: external
+    npmPackage: bmad-creative-intelligence-suite
+    repoUrl: https://github.com/bmad-code-org/bmad-module-creative-intelligence-suite
+    channel: stable
+    sha: 14a63b893c07173b7a6cfe0fb6a9a72ba51d3cf1
+  - name: gds
+    version: v0.4.0
+    installDate: 2026-05-07T18:57:27.916Z
+    lastUpdated: 2026-05-07T18:57:30.883Z
+    source: external
+    npmPackage: bmad-game-dev-studio
+    repoUrl: https://github.com/bmad-code-org/bmad-module-game-dev-studio
+    channel: stable
+    sha: 07ef779abaafb21fe3a8d80d57cf0b4dc9801d60
+  - name: tea
+    version: v1.15.1
+    installDate: 2026-05-07T18:57:29.724Z
+    lastUpdated: 2026-05-07T18:57:30.955Z
+    source: external
+    npmPackage: bmad-method-test-architecture-enterprise
+    repoUrl: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
+    channel: stable
+    sha: 7c94bdc6e3d2c8c3cad09eb0a32a42fade0e9079
+  - name: sam
+    version: main
+    installDate: 2026-05-07T18:57:29.929Z
+    lastUpdated: 2026-05-07T18:57:31.101Z
+    source: custom
+    npmPackage: null
+    repoUrl: https://github.com/bmad-code-org/bmad-builder
+    channel: next
+  - name: dw
+    version: main
+    installDate: 2026-05-07T18:57:30.052Z
+    lastUpdated: 2026-05-07T18:57:31.250Z
+    source: custom
+    npmPackage: null
+    repoUrl: https://github.com/bmad-code-org/bmad-builder
+    channel: next
+ides:
+  - claude-code
+  - codex
+  - cursor
+  - github-copilot
+  - gemini
+  - antigravity
