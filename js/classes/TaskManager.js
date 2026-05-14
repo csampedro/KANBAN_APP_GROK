@@ -196,6 +196,16 @@ window.TaskManager = (function() {
         }
     }
 
+    function configurarWIP(nuevoLimite) {
+        const parsed = parseInt(nuevoLimite);
+        if (!isNaN(parsed) && parsed > 0) {
+            wipLimit = parsed;
+            localStorage.setItem('kanban-wip-limit', wipLimit);
+            showToast(`Límite WIP actualizado a ${wipLimit}`);
+            renderizarTareas();
+        }
+    }
+
     function editarTarea(id, nuevoNombre) {
         const tarea = tareas.find(t => t.id.toString() === id.toString());
         if (tarea && nuevoNombre && nuevoNombre.trim() !== "" && (tarea.estado === 'para-hacer' || tarea.estado === 'haciendo')) {
