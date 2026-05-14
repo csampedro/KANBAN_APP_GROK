@@ -31,6 +31,10 @@
     </style>
 </head>
 <body>
+    <button id="theme-toggle" class="btn-icon" onclick="TaskManager.toggleTheme()" title="Cambiar tema">
+        <i data-lucide="moon"></i>
+    </button>
+
     <div id="app">
         <div id="para-hacer" class="columna">
             <h2>Para hacer</h2>
@@ -267,7 +271,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
     <title>Kanban Pro - Gestor de Tareas</title>
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -295,9 +299,16 @@
             <div class="tareas-contenedor"></div>
         </div>
     </div>
-    
-    <div id="agregar-tarea-container">
-        <button id="agregar-tarea">+ Agregar Tarea</button>
+
+    <div style="text-align: center; margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 15px;">
+        <div style="display: flex; gap: 10px;">
+            <button id="agregar-tarea" style="padding: 10px 20px; border-radius: 20px; border: none; background: var(--accent-color); color: white; cursor: pointer; font-weight: bold;">+ Nueva Tarea</button>
+            <button onclick="TaskManager.mostrarEstadisticas()" style="padding: 10px 20px; border-radius: 20px; border: 2px solid var(--accent-color); background: transparent; color: var(--accent-color); cursor: pointer; font-weight: bold;">📊 Ver Estadísticas</button>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="TaskManager.exportarCSV()" style="font-size: 0.8rem; background: none; border: 1px solid var(--text-secondary); color: var(--text-secondary); padding: 5px 12px; border-radius: 15px; cursor: pointer;">Exportar CSV</button>
+            <button onclick="TaskManager.exportarDatos()" style="font-size: 0.8rem; background: none; border: 1px solid var(--text-secondary); color: var(--text-secondary); padding: 5px 12px; border-radius: 15px; cursor: pointer;">Copia de Seguridad (JSON)</button>
+        </div>
     </div>
 
     <div id="toast-container"></div>

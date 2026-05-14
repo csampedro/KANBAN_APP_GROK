@@ -4,7 +4,30 @@ Este documento centraliza las estrategias de diseño y desarrollo para transform
 
 ## Brainstorming: Mejora del Look and Feel
 
-### 1. Estética y Diseño Visual (UI)
+### 0. Estrategia de Producto (PR/FAQ)
+Para asegurar que el desarrollo técnico se traduce en valor real, utilizaremos el framework PR/FAQ:
+
+**El Titular del Lanzamiento:** 
+> "Kanban Pro: La primera herramienta de productividad que protege tu privacidad y entrena tu enfoque, sin necesidad de la nube."
+
+**Preguntas Frecuentes Clave (FAQ):**
+- **¿Por qué local-first?** Para garantizar latencia cero y privacidad total. Tus datos nunca salen de tu máquina.
+- **¿Por qué el límite de 3 tareas?** Basado en principios de Kanban real (WIP Limits), la app no solo organiza, sino que actúa como un coach de productividad evitando el burnout.
+- **¿Cómo exporto mi trabajo?** A través del sistema de reportes CSV (Fase 3), permitiendo integración con herramientas de facturación o archivos personales.
+
+**Internal FAQ (Técnico):**
+- **¿Qué ocurre si el `localStorage` alcanza su límite (QuotaExceededError)?**  
+  Se implementará un sistema de "Data Pruning". Al superar el 80% de capacidad, se solicitará al usuario exportar las tareas de la columna "Finalizadas" a un archivo JSON histórico para liberar espacio en el almacenamiento activo.
+- **¿Cómo garantizamos la integridad de los datos en sesiones largas?**  
+  Utilizamos un esquema de guardado atómico en el cronómetro. El `setInterval` de guardado (cada 1 min) asegura que, ante un fallo del navegador, la pérdida de datos sea mínima.
+- **¿Cuál es el plan de escalabilidad si el volumen de tareas crece exponencialmente?**  
+  La arquitectura está preparada para migrar de `localStorage` a `IndexedDB`. Esto permitiría manejar GBs de datos y habilitar búsquedas indexadas sobre el historial de tiempos sin degradar la latencia de carga.
+- **¿Cómo manejamos la concurrencia de pestañas?**  
+  Se utiliza el evento `storage` de la Window API para sincronizar el estado entre múltiples pestañas abiertas, evitando que un cronómetro activo en una pestaña sobrescriba datos de otra.
+
+---
+
+## Brainstorming: Mejora del Look and Feel
 - **Paleta de Colores Profesional:** Migrar de colores HTML estándar a un esquema basado en diseño moderno (ej. Slate para textos, Indigo para acentos, Emerald para éxitos).
     - Fondo general: `#f8f9fa` (Gris muy claro).
     - Columnas: Blancas con bordes muy finos o sombras suaves.
@@ -30,6 +53,17 @@ Este documento centraliza las estrategias de diseño y desarrollo para transform
 - **Kebab Menu (Opciones Ocultas):** Agrupar acciones secundarias (Editar, Regresar, Subir/Bajar) en un menú desplegable de "tres puntos" para reducir la carga cognitiva.
 - **Empty States (Estados Vacíos):** Cuando una columna no tiene tareas, mostrar un mensaje motivador o un icono tenue en lugar de un espacio vacío.
 - **Skeleton Screens:** Mostrar estructuras de carga mientras la aplicación inicializa los datos desde el almacenamiento.
+
+---
+
+## Insights de Investigación (bmad-market-research)
+
+Como resultado de la ejecución del workflow `bmad-market-research`, se han definido los siguientes pilares de diferenciación para el producto:
+
+1. **Gestión de Tiempo Proactiva:** La investigación indica que los usuarios prefieren la comparación entre "tiempo estimado" y "tiempo real" sobre el simple seguimiento pasivo.
+2. **Modo de Enfoque (Pomodoro):** Se detectó una alta demanda por la integración de bloques de concentración (25/5 min) directamente en el flujo de trabajo del tablero.
+3. **Privacidad "Local-First":** El análisis de la competencia resalta una oportunidad en usuarios que evitan herramientas en la nube por motivos de privacidad; la arquitectura actual de la app es un diferenciador clave.
+4. **Límites de Trabajo en Progreso (WIP):** Para evitar el multitasking, el mercado responde positivamente a funciones que restringen tener más de un cronómetro activo simultáneamente.
 
 ---
 
@@ -64,10 +98,21 @@ Se integró un sistema de notificaciones efímeras inyectadas mediante JavaScrip
 | Paso | Estado | Descripción |
 | :--- | :--- | :--- |
 | **1. Refactorización de Estilos** | ✅ Completado | Sistema de variables `:root` e Inter UI implementado. |
+| **1.5 Definición de Producto** | ✅ Completado | Product Brief creado con foco en MVP y Historias de Usuario. |
 | **2. Iconografía** | ✅ Completado | Migración de botones de texto a Lucide Icons. |
 | **3. Notificaciones** | ✅ Completado | Sistema de Toasts funcional. |
 | **4. SortableJS** | ✅ Completado | Integración de Drag and Drop funcional. |
 | **5. Modo Oscuro** | ✅ Completado | Implementación de switch de tema con persistencia. |
+| **6. Control de Enfoque** | ✅ Completado | Límites WIP (3 tareas) y Alerta de Tiempo Excedido (2h). |
+| **7. Modo Pomodoro** | ✅ Completado | Notificación visual a los 25 minutos (Fase 2). |
+| **8. Seguridad de Datos** | ✅ Completado | Guardado automático cada minuto de la tarea activa. |
+| **9. Exportación CSV** | ✅ Completado | Fase 3: Generación de reportes de tiempo descargables. |
+| **10. Historial Diario** | ✅ Completado | Fase 4: Registro de tiempo y dashboard de actividad semanal. |
+
+### Refinamientos UX (create-ux-design)
+- **Empty States:** Visualización amigable cuando no hay tareas en una columna.
+- **Micro-interacciones:** Animaciones elásticas en Toasts y desenfoque de fondo en modales.
+- **Jerarquía de Datos:** Dashboard de estadísticas con mejor legibilidad de tiempos (h m).
 
 ## Notas Técnicas Actualizadas
 - Se ha añadido la fuente 'Inter' desde Google Fonts para mejorar la legibilidad en pantallas de alta densidad.

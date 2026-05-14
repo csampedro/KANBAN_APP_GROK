@@ -31,6 +31,10 @@
     </style>
 </head>
 <body>
+    <button id="theme-toggle" class="btn-icon" onclick="TaskManager.toggleTheme()" title="Cambiar tema">
+        <i data-lucide="moon"></i>
+    </button>
+
     <div id="app">
         <div id="para-hacer" class="columna">
             <h2>Para hacer</h2>
@@ -271,17 +275,35 @@
     <title>Kanban Pro - Gestor de Tareas</title>
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SortableJS CDN para el Drag and Drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         :root {
             --bg-primary: #f8f9fa;
             --bg-card: #ffffff;
             --text-main: #2d3436;
+            --text-secondary: #636e72;
+            --bg-column: #dfe6e9;
             --accent-color: #0984e3;
             --accent-success: #00b894;
+            --bg-selected: #f0fff4;
+            --text-selected: #2d3436;
             --accent-warning: #fdcb6e;
             --border-radius: 12px;
             --shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
             --transition: all 0.3s ease;
+        }
+
+        [data-theme='dark'] {
+            --bg-primary: #0f172a;
+            --bg-card: #1e293b;
+            --bg-column: #334155;
+            --text-main: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --bg-selected: #55efc4; /* Verde menta brillante para destacar la tarea activa */
+            --text-selected: #000000; /* Texto negro para máxima legibilidad sobre el fondo brillante */
+            --accent-color: #38bdf8;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         }
 
         body {
@@ -290,6 +312,13 @@
             color: var(--text-main);
             margin: 0;
             padding: 20px;
+        }
+
+        #theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
         }
 
         #app {
@@ -302,7 +331,7 @@
         .columna {
             flex: 1;
             min-width: 300px;
-            background: #dfe6e9;
+            background: var(--bg-column);
             padding: 15px;
             border-radius: var(--border-radius);
             min-height: 80vh;
@@ -312,7 +341,7 @@
             font-size: 1.1rem;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #636e72;
+            color: var(--text-secondary);
             margin-bottom: 20px;
         }
 
@@ -334,8 +363,18 @@
 
         .tarea.seleccionada {
             border-color: var(--accent-success);
-            background-color: #f0fff4;
+            background-color: var(--bg-selected);
+            color: var(--text-selected);
             animation: pulse 2s infinite;
+            border-left-width: 8px; /* Reforzamos el indicador visual */
+        }
+
+        .tarea.seleccionada h3 {
+            color: var(--text-selected) !important;
+        }
+
+        .tarea.seleccionada .time-display {
+            color: var(--text-selected) !important;
         }
 
         @keyframes pulse {
@@ -349,12 +388,49 @@
             border: none;
             cursor: pointer;
             padding: 5px;
-            color: #636e72;
+            color: var(--text-secondary);
             transition: var(--transition);
         }
 
         .btn-icon:hover:not(:disabled) { color: var(--accent-color); }
         .btn-icon:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .time-display {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Estilos para botones secundarios de exportación */
+        .btn-secondary {
+            font-size: 0.8rem;
+            background: none;
+            border: 1px solid var(--text-secondary);
+            color: var(--text-secondary);
+            padding: 5px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        .tiempo-excedido {
+            color: var(--accent-warning) !important;
+            font-weight: bold;
+        }
+
+        [data-theme='dark'] .tarea.seleccionada .time-display {
+            color: #000000 !important;
+            text-shadow: none;
+        }
 
         #toast-container {
             position: fixed;
@@ -365,6 +441,11 @@
     </style>
 </head>
 <body>
+    <!-- Botón de cambio de tema -->
+    <button id="theme-toggle" class="btn-icon" onclick="TaskManager.toggleTheme()" title="Cambiar tema" style="position: fixed; top: 20px; right: 20px; background: var(--bg-card); padding: 10px; border-radius: 50%; box-shadow: var(--shadow);">
+        <i data-lucide="moon"></i>
+    </button>
+
     <div id="app">
         <div id="para-hacer" class="columna">
             <h2>Para hacer</h2>
@@ -380,8 +461,16 @@
         </div>
     </div>
     
-    <div style="text-align: center; margin-top: 30px;">
-        <button id="agregar-tarea" style="padding: 10px 20px; border-radius: 20px; border: none; background: var(--accent-color); color: white; cursor: pointer; font-weight: bold;">+ Agregar Tarea</button>
+    <div style="text-align: center; margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px;">
+        <div style="display: flex; gap: 10px;">
+            <button id="agregar-tarea" style="padding: 10px 25px; border-radius: 20px; border: none; background: var(--accent-color); color: white; cursor: pointer; font-weight: bold; box-shadow: var(--shadow);">+ Nueva Tarea</button>
+            <button onclick="TaskManager.mostrarEstadisticas()" style="padding: 10px 20px; border-radius: 20px; border: 2px solid var(--accent-color); background: transparent; color: var(--accent-color); cursor: pointer; font-weight: bold;">📊 Ver Estadísticas</button>
+        </div>
+        
+        <div style="display: flex; gap: 10px; border-top: 1px solid var(--bg-column); padding-top: 15px;">
+            <button onclick="TaskManager.exportarCSV()" class="btn-secondary" title="Descargar reporte en Excel/CSV">Descargar CSV</button>
+            <button onclick="TaskManager.exportarDatos()" class="btn-secondary" title="Guardar copia de seguridad completa">Copia de Seguridad (JSON)</button>
+        </div>
     </div>
 
     <div id="toast-container"></div>
