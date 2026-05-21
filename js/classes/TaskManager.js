@@ -10,6 +10,24 @@ window.TaskManager = (function() {
     let wipLimit = parseInt(localStorage.getItem('kanban-wip-limit')) || 3; 
     const POMODORO_TIME = 1500;   // 25 minutos en segundos (Brief: Fase 2)
 
+    // Estilos dinámicos para el Modo Zen (H2.2)
+    const zenStyles = document.createElement('style');
+    zenStyles.innerHTML = `
+        .zen-active #para-hacer, .zen-active #finalizadas {
+            opacity: 0.1;
+            pointer-events: none;
+            filter: blur(4px);
+            transition: all 0.5s ease;
+        }
+        .zen-active .columna#haciendo {
+            transform: scale(1.02);
+            transition: transform 0.5s ease;
+            flex: 2;
+        }
+        .board-container { transition: all 0.5s ease; }
+    `;
+    document.head.appendChild(zenStyles);
+
     function playTick() {
         try {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -132,6 +150,52 @@ window.TaskManager = (function() {
         renderizarTareas();
     }
 
+    function verificarCuotaAlmacenamiento() {
+        const storageString = JSON.stringify(localStorage);
+        const sizeInBytes = new Blob([storageString]).size;
+        const limitInBytes = 5 * 1024 * 1024; // Límite real de 5MB
+        const porcentajeUso = (sizeInBytes / limitInBytes) * 100;
+
+        if (porcentajeUso > 80) {
+            showToast(`⚠️ Almacenamiento al ${porcentajeUso.toFixed(1)}%. ¡Libera espacio limpiando tareas finalizadas!`);
+        }
+    }
+
+    function verificarBackupPeriodico() {
+        const lastBackup = localStorage.getItem('kanban-last-backup');
+        const unaSemanaMs = 7 * 24 * 60 * 60 * 1000;
+        
+        if (!lastBackup || (Date.now() - parseInt(lastBackup)) > unaSemanaMs) {
+            setTimeout(() => {
+                showToast("💡 No has realizado un respaldo en una semana. ¡Usa Exportar para proteger tus datos!");
+            }, 5000); // Dar un margen de tiempo tras la carga inicial
+        }
+    }
+
+    function limpiarTareasFinalizadas() {
+        const finalizadasCount = tareas.filter(t => t.estado === 'finalizadas').length;
+        if (finalizadasCount === 0) {
+            showToast("No hay tareas finalizadas para limpiar.");
+            return;
+        }
+
+        if (confirm(`¿Deseas eliminar ${finalizadasCount} tareas finalizadas para liberar espacio? (Se recomienda exportar primero)`)) {
+            tareas = tareas.filter(t => t.estado !== 'finalizadas');
+            saveAndRender();
+            showToast("Almacenamiento optimizado con éxito.");
+        }
+    }
+
+    function actualizarInterfazModoZen() {
+        const board = document.querySelector('.board-container') || document.body;
+        if (tareaSeleccionada) {
+            board.classList.add('zen-active');
+            console.log("Modo Zen activado: Enfoque total en", tareaSeleccionada.nombre);
+        } else {
+            board.classList.remove('zen-active');
+        }
+    }
+
     function iniciarCronometro() {
         if (tareaSeleccionada && !intervalo) {
             intervalo = setInterval(() => {
@@ -161,6 +225,7 @@ window.TaskManager = (function() {
                     renderizarTareas();
                 }
             }, 1000);
+            actualizarInterfazModoZen();
         }
     }
 
@@ -168,6 +233,7 @@ window.TaskManager = (function() {
         if (intervalo) {
             clearInterval(intervalo);
             intervalo = null;
+            actualizarInterfazModoZen();
         }
     }
 
@@ -242,6 +308,7 @@ window.TaskManager = (function() {
 
     function exportarDatos() {
         const data = JSON.stringify({ tareas, idCounter, theme: localStorage.getItem('kanban-theme') });
+        localStorage.setItem('kanban-last-backup', Date.now().toString());
         const blob = new Blob([data], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -282,6 +349,11 @@ window.TaskManager = (function() {
     function saveAndRender() {
         renderizarTareas();
         window.guardarTareas(tareas, idCounter);
+        // Persistencia secundaria en IndexedDB (H1.2) para seguridad extra
+        if (window.KanbanDB) {
+            window.KanbanDB.save('state', { tareas, idCounter });
+        }
+        verificarCuotaAlmacenamiento();
     }
 
     function initSortable() {
@@ -415,14 +487,32 @@ window.TaskManager = (function() {
         }
     }
 
-    function formatTime(segundos) {
+    // Sugerencia de Review: Mover a un archivo de utilidades para testing unitario
+    function formatTime(segundos) { 
         const horas = Math.floor(segundos / 3600);
         const minutos = Math.floor((segundos % 3600) / 60);
         const segs = segundos % 60;
         return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segs).padStart(2, '0')}`;
     }
 
-    function loadTasks() {
+    async function loadTasks() {
+        // Lógica de Migración IndexedDB (H1.2)
+        try {
+            if (window.KanbanDB) {
+                const dbData = await window.KanbanDB.load('state');
+                if (dbData) {
+                    console.log("Cargando datos desde IndexedDB...");
+                    tareas = dbData.tareas.map(t => new Task(t.id, t.nombre, t.estado, t.tiempo, t.orden || 0, t.pomodoros || 0, t.historial || {}));
+                    idCounter = dbData.idCounter || 0;
+                    renderizarTareas();
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn("Fallo al cargar de IndexedDB, usando localStorage como fallback", e);
+        }
+
+        // Fallback a localStorage y migración inicial
         const { tareas: loadedTasks, idCounter: loadedIdCounter } = window.cargarTareas();
         const selectedId = tareaSeleccionada ? tareaSeleccionada.id.toString() : null;
         const localTime = tareaSeleccionada ? tareaSeleccionada.tiempo : 0;
@@ -431,6 +521,17 @@ window.TaskManager = (function() {
             if (!t.orden) t.orden = 0;
             return new Task(t.id, t.nombre, t.estado, t.tiempo, t.orden, t.pomodoros || 0, t.historial || {});
         });
+
+        // Migrar a IndexedDB si hay datos en localStorage
+        if (tareas.length > 0 && window.KanbanDB) {
+            try {
+                await window.KanbanDB.save('state', { tareas, idCounter: loadedIdCounter });
+                localStorage.removeItem('tareas'); // [BUG-001 FIX] Evitar datos duplicados/viejos
+                console.log("Migración a IndexedDB completada y localStorage purgado.");
+            } catch (e) {
+                console.error("Error durante la migración de datos", e);
+            }
+        }
 
         // Sincronizar tarea seleccionada con el estado de otras pestañas
         if (selectedId) {
@@ -448,52 +549,111 @@ window.TaskManager = (function() {
         }
 
         idCounter = loadedIdCounter || 0;
+        renderizarTareas();
     }
 
     function mostrarEstadisticas() {
         const totalPomodoros = tareas.reduce((acc, t) => acc + (t.pomodoros || 0), 0);
         const totalTiempo = tareas.reduce((acc, t) => acc + t.tiempo, 0);
         const completadas = tareas.filter(t => t.estado === 'finalizadas').length;
-
-        // 1. Lógica para la Gráfica de Actividad Diaria (Últimos 7 días)
-        const ultimos7Dias = [];
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            ultimos7Dias.push(d.toISOString().slice(0, 10));
-        }
-
-        const actividadDiaria = ultimos7Dias.map(fecha => {
-            const totalSegundos = tareas.reduce((acc, t) => acc + (t.historial?.[fecha] || 0), 0);
-            return { fecha, totalSegundos };
+        
+        // --- Heatmap Data Aggregation (for last 6 months) ---
+        const dailyActivity = {};
+        tareas.forEach(task => {
+            if (task.historial) {
+                for (const date in task.historial) {
+                    if (task.historial.hasOwnProperty(date)) {
+                        dailyActivity[date] = (dailyActivity[date] || 0) + task.historial[date];
+                    }
+                }
+            }
         });
 
-        const maxSegundosDia = Math.max(...actividadDiaria.map(d => d.totalSegundos), 1);
+        // Consolidate current active task time for display purposes only (without stopping timer or saving)
+        if (tareaSeleccionada && intervalo) { // If a task is currently running
+            const todayIso = new Date().toISOString().slice(0, 10);
+            dailyActivity[todayIso] = (dailyActivity[todayIso] || 0) + tareaSeleccionada.tiempo;
+        }
+
+        const today = new Date();
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(today.getMonth() - 6);
+        
+        const datesForGrid = [];
+        let cursorDate = new Date(sixMonthsAgo);
+        // Adjust to start on Monday of the week containing sixMonthsAgo
+        cursorDate.setDate(cursorDate.getDate() - cursorDate.getDay() + (cursorDate.getDay() === 0 ? -6 : 1)); 
+
+        while (cursorDate <= today) {
+            datesForGrid.push(new Date(cursorDate));
+            cursorDate.setDate(cursorDate.getDate() + 1);
+        }
+
+        // Determine max activity for color scaling
+        const allDailyTotals = Object.values(dailyActivity);
+        const maxActivityInPeriod = allDailyTotals.length > 0 ? Math.max(...allDailyTotals) : 1; // Avoid division by zero
+
+        // Color scale (using CSS variables, assuming they are defined in the main CSS)
+        const colorScale = [
+            'var(--emerald-100, #D1FAE5)', // Lightest (default if variable not found)
+            'var(--emerald-300, #6EE7B7)',
+            'var(--emerald-500, #10B981)',
+            'var(--emerald-700, #047857)',
+            'var(--emerald-900, #064E3B)'  // Darkest
+        ];
+
+        function getActivityColor(seconds) {
+            if (seconds === 0) return 'var(--bg-column)'; // No activity, use column background
+            const percentage = seconds / maxActivityInPeriod;
+            if (percentage <= 0.2) return colorScale[0];
+            if (percentage <= 0.4) return colorScale[1];
+            if (percentage <= 0.6) return colorScale[2];
+            if (percentage <= 0.8) return colorScale[3];
+            return colorScale[4];
+        }
 
         // 2. Lógica para la distribución de Pomodoros por tarea
         const tareasConPomodoros = tareas.filter(t => (t.pomodoros || 0) > 0);
         const maxPomodoros = Math.max(...tareasConPomodoros.map(t => t.pomodoros), 1);
         
-        let activityChartHtml = `
+        // --- Heatmap HTML Generation ---
+        const numWeeks = Math.ceil(datesForGrid.length / 7);
+        let heatmapCellsHtml = '';
+        
+        // Collect unique months for labels
+        const monthsInPeriod = Array.from(new Set(datesForGrid.map(d => d.toLocaleString('es-ES', { month: 'short', year: '2-digit' }))));
+        const monthLabelsHtml = monthsInPeriod.map(month => `<span style="flex: 1; text-align: center; color: var(--text-secondary);">${month}</span>`).join('');
+
+        datesForGrid.forEach((date) => {
+            const isoDate = date.toISOString().slice(0, 10);
+            const seconds = dailyActivity[isoDate] || 0;
+            const color = getActivityColor(seconds);
+            const tooltip = `${date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}: ${formatTime(seconds)}`;
+
+            heatmapCellsHtml += `
+                <div class="heatmap-cell" 
+                     style="background-color: ${color}; width: 12px; height: 12px; border-radius: 2px;"
+                     title="${tooltip}"></div>
+            `;
+        });
+
+        let heatmapHtml = `
             <div style="margin-bottom: 25px;">
-                <h3 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;">Actividad de la Semana</h3>
-                <div style="display: flex; align-items: flex-end; justify-content: space-between; height: 120px; padding: 15px; background: rgba(0,0,0,0.03); border-radius: 12px; border: 1px dashed var(--bg-column);">
-                    ${actividadDiaria.map(d => {
-                        const altura = (d.totalSegundos / maxSegundosDia) * 100;
-                        const diaNombre = new Date(d.fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short' });
-                        const esHoy = d.fecha === new Date().toISOString().slice(0, 10);
-                        return `
-                            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%;">
-                                <div style="flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px;">
-                                    <div title="${formatTime(d.totalSegundos)}" 
-                                         style="width: 60%; background: ${esHoy ? 'var(--accent-success)' : 'var(--accent-color)'}; 
-                                                height: ${Math.max(altura, 5)}%; border-radius: 4px 4px 2px 2px; 
-                                                opacity: ${altura > 0 ? 1 : 0.2}; transition: height 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);"></div>
-                                </div>
-                                <span style="font-size: 0.65rem; color: var(--text-secondary); font-weight: ${esHoy ? 'bold' : 'normal'}">${diaNombre}</span>
-                            </div>
-                        `;
-                    }).join('')}
+                <h3 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;">Mapa de Calor de Productividad (Últimos 6 meses)</h3>
+                <div style="display: flex; justify-content: space-around; margin-bottom: 5px; padding-left: 20px;">
+                    ${monthLabelsHtml}
+                </div>
+                <div id="heatmap-grid" style="display: grid; grid-template-columns: auto repeat(${numWeeks}, 1fr); gap: 2px; font-size: 0.7rem;">
+                    <div style="display: flex; flex-direction: column; justify-content: space-around; padding-right: 5px; color: var(--text-secondary);">
+                        <span>Lun</span>
+                        <span>Mar</span>
+                        <span>Mié</span>
+                        <span>Jue</span>
+                        <span>Vie</span>
+                        <span>Sáb</span>
+                        <span>Dom</span>
+                    </div>
+                    ${heatmapCellsHtml}
                 </div>
             </div>
         `;
@@ -522,15 +682,15 @@ window.TaskManager = (function() {
 
         const statsHtml = `
             <div id="stats-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:2000; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
-                <div style="background:var(--bg-card); padding:30px; border-radius:var(--border-radius); max-width:550px; width:95%; position:relative; color: var(--text-main); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);">
+                <div style="background:var(--bg-card); padding:30px; border-radius:var(--border-radius); max-width:700px; width:95%; position:relative; color: var(--text-main); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);">
                     <h2 style="margin-top:0; display: flex; align-items: center; gap: 10px;">📊 Dashboard de Enfoque</h2>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin: 20px 0;">
                         <div style="text-align:center; padding:15px; background:var(--bg-column); border-radius:12px; border: 1px solid rgba(0,0,0,0.05);"><span style="font-size:1.5rem">🍅</span><br><strong style="font-size: 1.2rem;">${totalPomodoros}</strong><br><span style="font-size: 0.8rem; color: var(--text-secondary);">Pomodoros</span></div>
                         <div style="text-align:center; padding:15px; background:var(--bg-column); border-radius:12px; border: 1px solid rgba(0,0,0,0.05);"><span style="font-size:1.5rem">⏱️</span><br><strong style="font-size: 1.2rem;">${formatTime(totalTiempo).split(':').slice(0,2).join('h ')}m</strong><br><span style="font-size: 0.8rem; color: var(--text-secondary);">Invertido</span></div>
                     </div>
                     <p>Tareas finalizadas: <strong>${completadas}</strong></p>
-                    <div style="background: var(--bg-primary); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--bg-column);">
-                        ${activityChartHtml}
+                    <div style="background: var(--bg-primary); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--bg-column); overflow-x: auto;">
+                        ${heatmapHtml}
                         ${pomodoroChartHtml}
                     </div>
                     <button onclick="this.closest('#stats-modal').remove()" style="width:100%; padding:12px; background:var(--accent-color); color:white; border:none; border-radius:8px; cursor:pointer; font-weight: bold; transition: opacity 0.2s;">Entendido</button>
@@ -584,6 +744,7 @@ window.TaskManager = (function() {
     
     // Cargar tareas al inicio y renderizar
     loadTasks();
+    verificarBackupPeriodico();
     renderizarTareas();
     initSortable();
     setTimeout(() => updateThemeIcon(savedTheme), 100); // Pequeño delay para asegurar carga de DOM
@@ -610,6 +771,7 @@ window.TaskManager = (function() {
         exportarCSV,
         mostrarEstadisticas,
         configurarWIP,
+        limpiarTareasFinalizadas,
         renderizarTareas,
         tareas // Para depuración
     };

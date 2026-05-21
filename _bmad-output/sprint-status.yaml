@@ -1,0 +1,62 @@
+sprint_info:
+  id: 1
+  name: "Resiliencia y Enfoque Inicial"
+  status: "in_progress"
+  start_date: "2024-05-20"
+  end_date: "2024-06-03"
+
+objectives:
+  - "Garantizar persistencia segura ante límites de almacenamiento (H1.1)"
+  - "Implementar la primera fase del Modo Zen para reducir distracciones (H2.2)"
+  - "Añadir atajos de teclado básicos para operación 'mouse-less' (H4.1)"
+
+backlog_items:
+  - id: "H1.1"
+    title: "Monitor de Almacenamiento"
+    completion: 100
+    notes: "Implementado monitoreo y función de limpieza (pruning) en TaskManager.js"
+  - id: "H1.2"
+    title: "Migración a IndexedDB"
+    completion: 100
+    notes: "Migración automática desde localStorage y persistencia asíncrona implementada."
+  - id: "H1.3"
+    title: "Copias de Seguridad Automatizadas"
+    completion: 100
+    notes: "Recordatorio proactivo de 7 días y exportación JSON funcional."
+  - id: "H2.2"
+    title: "Modo Zen"
+    completion: 100
+    priority: "alta"
+    notes: "Interfaz inmersiva con desenfoque de columnas laterales y layout centrado para la tarea activa."
+  - id: "H4.1"
+    title: "Atajos de Teclado"
+    completion: 100
+    notes: "Control total mouse-less. Implementado manejo de foco y prevención de conflictos en inputs."
+  - id: "H2.1"
+    title: "Límites WIP Configurables"
+    completion: 100
+    notes: "Configuración persistente de límites para 'Haciendo' con validaciones y notificaciones Toast."
+  - id: "H2.3"
+    title: "Pomodoro Personalizado"
+    completion: 100
+    notes: "Ajuste dinámico de tiempos de bloque y visualización de progreso circular en la tarjeta."
+  - id: "H3.1"
+    title: "Mapa de Calor"
+    completion: 100
+    notes: "Visualización de actividad estilo GitHub integrada en el dashboard usando CSS Grid."
+  - id: "H3.2"
+    title: "Etiquetas"
+    completion: 100
+    notes: "Sistema de categorización por colores y desglose porcentual de tiempo por proyecto."
+  - id: "H3.3"
+    title: "Reportes PDF"
+    completion: 100
+    notes: "Generación de reportes profesionales mediante estilos de impresión optimizados."
+  - id: "H4.2"
+    title: "Temas de Sonido"
+    completion: 100
+    notes: "Integración de paisajes sonoros (Lluvia, Ruido Blanco) y ticks de concentración persistentes."
+  - id: "H4.3"
+    title: "Soporte PWA"
+    completion: 100
+    notes: "Service Worker configurado para funcionamiento offline y manifiesto para instalación en escritorio/móvil."
